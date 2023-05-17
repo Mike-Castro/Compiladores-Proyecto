@@ -1,33 +1,38 @@
 import ply.lex as lex
 
-tokes = (
-    'DECLARE',
-    'WRITE',
-    'READ',
-    'IF',
-    'ELSE',
-    'WHILE',
-    'FOR',
-    'STEP',
-    'TO',
-    'AND',
-    'OR',
-    'RETURN',
-    'FUNCTION',
+reserved = {
+    'if': 'IF',
+    'else': 'ELSE',
+    'while': 'WHILE',
+    'for': 'FOR',
+    'module': 'MODULE',
+    'return': 'RETURN',
+    'read': 'READ',
+    'write': 'WRITE',
+    'list': 'LIST',
+    'matrix': 'MATRIX',
+    'int': 'INT',
+    'float': 'FLOAT',
+    'bool': 'BOOL',
+    'string': 'STRING',
+}
 
+tokens = [
     'PLUS',
     'DIVIDE',
     'MINUS',
     'TIMES',
-    'LESSTHAN',
-    'GREATERTHAN',
-    'LESSTHAN_E',
-    'GREATERTHAN_E',
-    'EQUAL',
-    'NOTEQUAL',
+    'LT',
+    'GT',
+    'LTE',
+    'GTE',
+    'EQ',
+    'NEQ',
     'ASSIGN',
-    'MODULO',
 
+    'MOD',
+    'AND',
+    'OR',
     'COMMA',
     'COLON',
     'SEMICOLON',
@@ -37,25 +42,26 @@ tokes = (
     'RBRACK',
     
     'ID',
-    'INT',
-    'FLOAT',
-    'STRING',
-    'BOOLEAN'
-)
+    'CTEI',
+    'CTEF',
+    'CTESTRING'
+] + list(reserved.values())
 
 t_PLUS = 'r\+'
 t_DIVIDE = r'/'
 t_MINUS = r'-'
 t_TIMES = r'\*'
 
-t_LESSTHAN = r'<'
-t_GREATERTHAN = r'>' 
-t_LESSTHAN_ = r'<=' 
-t_GREATERTHAN_E = r'>='
-t_EQUAL = r'==' 
-t_NOTEQUAL = r'!=' 
-t_ASSING = r'=' 
-t_MODULO = r'%'
+t_AND = r'&&'
+t_OR = r'\|\|'
+t_LT = r'<'
+t_GT = r'>' 
+t_LTE = r'<=' 
+t_GTE = r'>='
+t_EQ = r'==' 
+t_NEQ = r'!=' 
+t_ASSIGN = r'=' 
+t_MOD = r'%'
 
 t_COMMA= r','
 t_COLON = r':'
@@ -65,4 +71,36 @@ t_RPAREN = r'\)'
 t_LBRACK = r'\['
 t_RBRACK = r'\]'
 
+# Expresiones regulares
 
+def t_ID(t):
+    r'[a-zA-Z_][a-zA-Z0-9_]*'
+    t.type = reserved.get(t.value, 'ID')
+    return t
+
+def t_CTEI(t):
+    r'\d+'
+    t.value = int(t.value)
+    return t
+
+def t_CTEF(t):
+    r'\d+\.\d+'
+    t.value = float(t.value)
+    return t
+
+def t_CTESTRING(t):
+    r'"([^"\\]|\\.)*"|\'([^\'\\]|\\.)*\''
+    t.value = t.value[1:-1]
+    return t
+
+t_ignore = ' \t'
+
+def t_newline(t):
+    r'\n+'
+    t.lexer.lineno += len(t.value)
+
+def t_error(t):
+    print(f"Error: Illegal character '{t.value[0]}'")
+    t.lexer.skip(1)
+
+lexer = lex.lex()
