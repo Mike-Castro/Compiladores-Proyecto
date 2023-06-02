@@ -18,9 +18,6 @@ reserved = {
     'return': 'RETURN',
     'read': 'READ',
     'write': 'WRITE',
-    'list': 'LIST',
-    'matrix': 'MATRIX',
-    'void' : 'VOID',
     'program' : 'PROGRAM',
     'end' : 'END'
 }
@@ -84,14 +81,14 @@ t_RBRACE = r'\}'
 t_LBRACKET = r'\['
 t_RBRACKET = r'\]'
 
-t_ignore = ' \t'
+t_ignore = ' \t\n'
 
 # Expresiones regulares
 def t_CTEF(t):
     r'[+-]?[0-9]+\.[0-9]+'
     t.value = float(t.value)
     return t
-    
+
 def t_ID(t):
     r'[a-zA-Z_][a-zA-Z_0-9]*'
     t.type = reserved.get(t.value, 'ID')
