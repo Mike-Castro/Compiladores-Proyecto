@@ -19,7 +19,8 @@ reserved = {
     'read': 'READ',
     'write': 'WRITE',
     'program' : 'PROGRAM',
-    'end' : 'END'
+    'end' : 'END',
+    'void' : 'VOID'
 }
 
 tokens = [
@@ -81,7 +82,7 @@ t_RBRACE = r'\}'
 t_LBRACKET = r'\['
 t_RBRACKET = r'\]'
 
-t_ignore = ' \t\n'
+t_ignore = ' \t'
 
 # Expresiones regulares
 def t_CTEF(t):

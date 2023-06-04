@@ -1,4 +1,4 @@
-import numpy as np
+import json
 
 class VirtualMachine:
     def __init__(self):
@@ -9,70 +9,84 @@ class VirtualMachine:
         self.quads = []
         self.quad_pointer = 0
         self.varAddress = {}
+        self.localMemory = {}
+        
+    def getKey(self, dictionary, valor):
+        if valor in self.localMemory:
+            return self.localMemory.get(valor)
+        else:
+            for key, value in dictionary.items():
+                if value == valor:
+                    try:
+                        key = int(key)
+                        return key
+                    except ValueError:
+                        pass
+                    try:
+                        key = float(key)
+                        return key
+                    except ValueError:
+                        pass
+                    return key
+        return valor
+
     # Guardar en la VM las variables  #
 
-    def loadOBJ(filename):
+    def loadOBJ(self, filename):
         quads = []
+        memory = {}
         with open(filename, 'r') as file:
-            for line in file:
-                parts = line.strip().split(' ')
-                opcode = parts[0]
-                op1 = parts[1] 
-                op2 = parts[2] 
-                result = parts[3]
-                quads.append((opcode, op1, op2, result))
-        return quads
+            data = json.load(file)
+            quads_data = data.get("quad")
+            memory_data = data.get("memory")
+            if quads_data is not None:
+                quads = quads_data
+            if memory_data is not None:
+                memory = memory_data
+        return quads, memory
 
     # Correr la virtual machine # 
-    def run(self):
+    def run(self, quads, memory):
+        self.quads = quads
+        self.memory = memory
         self.quad_pointer = 0
-        self.memory_addresses = {}
-
         while self.quad_pointer < len(self.quads):
-            quad = self.quads[self.quad_pointer]
-            opcode = quad[0]
-            if opcode == "ADD":
-                if len(self.stack) < 2:
-                    raise Exception("Stack has less than 2 values")
-                b = self.stack.pop()
-                a = self.stack.pop()
-                self.stack.append(a + b)
-            elif opcode == "MULTIPLY":
-                if len(self.stack) < 2:
-                    raise Exception("Stack has less than 2 values")
-                b = self.stack.pop()
-                a = self.stack.pop()
-                self.stack.append(a * b)
-            elif opcode == "SUBTRACT":
-                if len(self.stack) < 2:
-                    raise Exception("Stack has less than 2 values")
-                a = self.stack.pop()
-                b = self.stack.pop()
-                self.stack.append(a - b)
+            opcode = self.quads[self.quad_pointer][0]
+            op1 = self.quads[self.quad_pointer][1]
+            op2 = self.quads[self.quad_pointer][2]
+            op3 = self.quads[self.quad_pointer][3]
+            if opcode == "PLUS":
+                print(op1, op2, 'x')
+                a = vm.getKey(self.memory, op1)
+                b = vm.getKey(self.memory, op2)
+                print(a, b, 'x')
+                result = a + b
+                self.localMemory[op3] = result
+            elif opcode == "TIMES":
+                a = vm.getKey(self.memory, op1)
+                b = vm.getKey(self.memory, op2)
+                result = a * b
+                self.localMemory[op3] = result
+            elif opcode == "MINUS":
+                a = vm.getKey(self.memory, op1)
+                b = vm.getKey(self.memory, op2)
+                result = a - b
+                self.localMemory[op3] = result
             elif opcode == "DIVIDE":
-                if len(self.stack) < 2:
-                    raise Exception("Stack has less than 2 values")
-                a = self.stack.pop()
-                b = self.stack.pop()
-                self.stack.append(a / b)
-            elif opcode == "PRINT":
-                if len(self.stack) == 0:
-                    raise Exception("Stack is empty")
-                value = self.stack.pop()
+                a = vm.getKey(self.memory, op1)
+                b = vm.getKey(self.memory, op2)
+                result = a / b
+                self.localMemory[op3] = result
+            elif opcode == "WRITE":
+                value = self.getKey(self.memory, op3)
                 print(value)
             elif opcode == "READ":
-                variable = quad[1]
-                value = input(f"Enter a value for '{variable}': ")
-                self.variables[variable] = value
+                inp = input(f"Enter value: ")
+                self.localMemory[op3] = inp
             elif opcode == "ASSIGN":
-                value = self.stack.pop()
-                address = self.stack.pop()
-                index = int(self.stack.pop())
-                self.heap[address][index] = value
-            elif opcode == "IF":
-                condition = self.stack.pop()
-                if not condition:
-                    self.quad_pointer += 1
+                value = self.getKey(self.memory, op1)
+                self.localMemory[op3] = value
+                print(self.localMemory)
             elif opcode == "GOTO":
                 label = quad[1]
                 self.quad_pointer = self.find_label(label)
@@ -84,14 +98,11 @@ class VirtualMachine:
                     self.quad_pointer = self.find_label(label)
                     continue
             elif opcode == "GOTOF":
-                condition = self.stack.pop()
                 label = quad[1]
                 if not condition:
                     self.quad_pointer = self.find_label(label)
                     continue
             elif opcode == "PARAM":
-                variable = quad[1]
-                value = self.variables[variable]
                 self.stack.append(value)
             elif opcode == "END":
                 break
@@ -106,6 +117,6 @@ class VirtualMachine:
 
 
 vm = VirtualMachine()
-obj_file = 'file'
-quads = vm.loadOBJ(obj_file)
-vm.execute(quads)
+obj_file = 'info.json'
+quads, memory = vm.loadOBJ(obj_file)
+vm.run(quads, memory)
