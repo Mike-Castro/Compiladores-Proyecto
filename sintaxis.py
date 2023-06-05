@@ -2,12 +2,15 @@ import os
 import codecs
 import re
 import turtle
+import sys
 import json
 import ply.yacc as yacc
 from gramatica import tokens
 
+# Clase memoria, se encarga de asignar una direccion a los diferentes tipos de variables # 
 class Memory():
     def __init__(self):
+        # Espacios para los diferentes tipos de direccion # 
         self.memory_spaces = {
             'LocalesInt': (1000, 3000),
             'LocalesFloat': (3000, 5000),
@@ -49,6 +52,8 @@ class Memory():
             'ConstantesBool': []
         }
 
+# Funcion que se le da como parametro si es global, si es temporal, si es constante, 
+# si se tiene falso en estas 3, entonces se le asigna uno local, despues se le da el valor del tipo y el tamaño #
     def addMemory(self, isGlobal, isTemp, isConst, type, size):
         type = type.upper()
         memory_space = None
@@ -101,6 +106,7 @@ class Memory():
         else:
             raise ValueError(f"Invalid memory type: {type}")
     
+    # Funcion para obtener el tipo de la variable dado una direccion # 
     def getTypeFromAddress(self, address):
         if (1000 <= address < 3000) or (10000 <= address < 13000) or (20000 <= address < 23000) or (33000 <= address < 35000):
             return "INT"
@@ -115,39 +121,51 @@ class Memory():
         else:
             return "Unknown type"
 
-pilaOpe = []
+# Stacks para guardar los quads y sus pilas, tambien se tiene un contador #
 pilaTypes = []
-pilaOperator = []
 quads = []
 contQuads = 0
 pilaSaltos = []
 mem = Memory()
 is_global = True
+
+# Clase de la tabla de variables #
 class VariablesTable():
     def __init__(self):
+        # Creacion de la tabla de variables en un diccionario #
         self.memoryTable = {}
+        # Ejemplo:  
+        # "memory": {
+        # "v": 13000,
+        # "y": 13001,
+        # "j": 10000
+        # }
     
+    # Funcion que agrega variable al diccionario, se le da como parametro el id y su direccion de memoria #
     def addVarTable(self, variable_id, memory_address):
-        print(variable_id, memory_address)
-        if variable_id in self.memoryTable: # se cambia o no el <>
+        if variable_id in self.memoryTable and memory_address: # se cambia o no el <>
             raise ValueError(f'The variable {variable_id} already exists')
         else:
             self.memoryTable[variable_id] = memory_address
     
+    # Funcion que regresa la direccion del id, dando como parametro este mismo #
     def getVarAddress(self, variable_id):
         if variable_id not in self.memoryTable:
             raise ValueError(f'The variable {variable_id} does not exists')
         else:
             return self.memoryTable.get(variable_id)
 
+    # Funcion que regresa el tipo de la variable, dando como parametro la direccion de memoria #
     def getTypeFromMemory(self, memory_address):
         return mem.getTypeFromAddress(memory_address)
     
+    # Imprime la tabla de variables #
     def printVarTable(self):
         print(self.memoryTable)
 
 varTable = VariablesTable()
 
+# Tabla del cubo semantico #
 semantic_cube = {
     ('+', 'int', 'int'): 'int',
     ('+', 'int', 'float'): 'float',
@@ -193,6 +211,7 @@ semantic_cube = {
     ('+', 'string', 'string'): 'string',
 }
 
+# Funcion que regresa el tipo de la expresion # 
 def lookup_semantic_cube(op, type1, type2):
     key = (op, type1, type2)
     if key in semantic_cube:
@@ -200,17 +219,35 @@ def lookup_semantic_cube(op, type1, type2):
     else:
         return f"Error: No matching type for operator '{op}' and operand types '{type1}' and '{type2}'"
 
-# Define grammar rules
+
+# Definicion de las reglas # 
 
 # Como debe de estar la sintaxis del programa #
 def p_program(p):
-    '''program : PROGRAM ID SEMICOLON declaration_list function MAIN LPAREN RPAREN bloque SEMICOLON debug dataObj'''
+    '''program : PROGRAM ID SEMICOLON declaration_list function MAIN LPAREN mainRef RPAREN bloque SEMICOLON final debug dataObj'''
 
+# Agrega valor de donde empieza el main #
+def p_mainRef(p):
+    '''mainRef :
+    '''
+    global contQuads
+    varTable.addVarTable("MAIN", contQuads)
+
+def p_final(p):
+    '''final : 
+    '''
+    global contQuads
+    quads.append(("END",None, None, None))
+    contQuads += 1
+
+# Imprime la tabla de variables #
 def p_debug(p):
     '''debug : 
     '''
     varTable.printVarTable()
+    print(quads)
 
+# Pasa la memoria y la tabla a un archivo OBJ, en este caso un json #
 def p_dataObj(p):
     '''dataObj : 
     '''
@@ -247,30 +284,40 @@ def p_function(p):
                 | empty'''
 
 def p_functionF(p):
-    '''functionF : FUNC idFunc LPAREN parameter_list RPAREN LBRACE statement_list RBRACE SEMICOLON'''
+    '''functionF : FUNC idFunc LPAREN parameter_list RPAREN LBRACE statement_list RBRACE SEMICOLON terminaFunc'''
 
+# Guarda el ID de la funcion y verifica # 
 def p_idFunc(p):
     '''
     idFunc : ID
     '''
-    global is_global 
+    global is_global, contQuads
     is_global = False
     id = p[1]
     if id not in varTable.memoryTable:
         addrs = mem.addMemory(is_global, False, False, 'POINTER', 1)
-        varTable.addVarTable(id, addrs)
+        varTable.addVarTable(id, contQuads)
     else:
         print(f"Error: Function with ID: '{id}' is already declared")
 
-#def p_return_statement(p):
- #   '''return_statement : RETURN exp SEMICOLON
-  #                      | empty'''
-
+# Llama la funcion #
 def p_callFunc(p):
     '''callFunc : ID LPAREN parameter_list RPAREN SEMICOLON'''
-    if p[1] not in varTable.memoryTable():
+    global contQuads
+    if p[1] not in varTable.memoryTable:
         print(f"Error: Function with ID: '{p[1]}' is not declared")
+    else:
+        quads.append(("GOSUB", None, None, p[1]))
+        contQuads += 1
+
+def p_terminaFunc(p):
+    '''terminaFunc :
+    '''
+    global contQuads
+    quads.append(("ENDFunc",None, None, None))
+    contQuads += 1
         
+# Parametros para funcion #
 def p_parameter_list(p):
     '''parameter_list : tipo ID parameter
                       | empty'''
@@ -283,6 +330,7 @@ def p_parameter(p):
     '''parameter : COMMA tipo ID parameter
                  | empty'''
 
+# Lista de estatutos #
 def p_statement_list(p):
     '''statement_list : statement
                       | statement_list statement'''
@@ -291,6 +339,7 @@ def p_statement_list(p):
     else:
         p[0] = p[1] + [p[2]]
 
+# Posibles estatutos a realizar #
 def p_statement(p):
     '''statement : declaration_list
                  | assignment_statement
@@ -304,6 +353,7 @@ def p_statement(p):
                  | callFunc'''
     p[0] = p[1]
 
+# Expresiones #
 def p_expression(p):
     '''expression : exp1
                     | exp1 AND exp1
@@ -364,14 +414,34 @@ def p_exp1(p):
         contQuads += 1
         p[0] = temp_address
     
+    elif p[2] == '<=':
+        operator = p[2]
+        op1 = p[1]
+        op2 = p[3]
+        op1type = varTable.getTypeFromMemory(op1).lower()
+        op2type = varTable.getTypeFromMemory(op2).lower()
+        temp_address = mem.addMemory(False, True, False, lookup_semantic_cube(operator, op1type, op2type), 1)
+        quads.append(("LTE", op1, op2, temp_address))
+        contQuads += 1
+        p[0] = temp_address
+
+    elif p[2] == '>=':
+        operator = p[2]
+        op1 = p[1]
+        op2 = p[3]
+        op1type = varTable.getTypeFromMemory(op1).lower()
+        op2type = varTable.getTypeFromMemory(op2).lower()
+        temp_address = mem.addMemory(False, True, False, lookup_semantic_cube(operator, op1type, op2type), 1)
+        quads.append(("GTE", op1, op2, temp_address))
+        contQuads += 1
+        p[0] = temp_address
+    
     elif p[2] == '==':
         operator = p[2]
         op1 = p[1]
         op2 = p[3]
-        print(op1, op2)
         op1type = varTable.getTypeFromMemory(op1).lower()
         op2type = varTable.getTypeFromMemory(op2).lower()
-        print(op1type, op2type)
         temp_address = mem.addMemory(False, True, False, lookup_semantic_cube(operator, op1type, op2type), 1)
         quads.append(("EQ", op1, op2, temp_address))
         contQuads += 1
@@ -482,25 +552,19 @@ def p_addConst(p):
         p[0] = temp
     else: 
         if isinstance(p[-1], float):
-            t = mem.addMemory(False, False, True, 'FLOAT', 1)
-            varTable.addVarTable(p[-1], t)
-            pilaOpe.append(t)
-            pilaTypes.append("FLOAT")
-            p[0] = t
+                t = mem.addMemory(False, False, True, 'FLOAT', 1)
+                varTable.addVarTable(p[-1], t)
+                p[0] = t
         elif isinstance(p[-1], int):
-            t = mem.addMemory(False, False, True, 'INT', 1)
-            varTable.addVarTable(p[-1], t)
-            pilaOpe.append(t)
-            pilaTypes.append("INT")
-            p[0] = t
+                t = mem.addMemory(False, False, True, 'INT', 1)
+                varTable.addVarTable(p[-1], t)
+                p[0] = t
         elif isinstance(p[-1], str):
-            t = mem.addMemory(False, False, True, 'STRING', 1)
-            varTable.addVarTable(p[-1], t)
-            pilaOpe.append(t)
-            pilaTypes.append("STRING")
-            p[0] = t
+                t = mem.addMemory(False, False, True, 'STRING', 1)
+                varTable.addVarTable(p[-1], t)
+                p[0] = t
 
-# Declarations # 
+# Lista de declaraciones # 
 def p_declaration_list(p):
     '''declaration_list : declaration
                         | declaration_list declaration'''
@@ -524,6 +588,7 @@ def p_declarationD(p):
     varTable.addVarTable(p[1], addrs)
 
 
+# Declaracion de lista (array)  #
 def p_list_declaration(p):
     '''list_declaration : tipo ID LBRACKET var RBRACKET SEMICOLON'''
     tipo = p[1]
@@ -538,6 +603,7 @@ def p_var(p):
     '''var : CTEI'''
     p[0] = p[1]
 
+# Declaracion de matriz # 
 def p_matrix_declaration(p):
     '''matrix_declaration : tipo ID LBRACKET var RBRACKET LBRACKET var RBRACKET SEMICOLON'''
     tipo = p[1]
@@ -548,8 +614,7 @@ def p_matrix_declaration(p):
     else:
         print(f"Error: '{p[2]}' is already declared")
 
-# Statements
-
+# Estatuto de asignacion #
 def p_assignment_statement(p):
     '''assignment_statement : ID ASSIGN exp SEMICOLON
                             | list_declaration
@@ -570,7 +635,7 @@ def p_assignment_statement(p):
             raise ValueError(f"Error: ID isn't declared '{p[1]}'")
 
 
-# Leer dato 
+# Estatuto leer datos # 
 def p_read_statement(p):
     '''read_statement : READ LPAREN ID RPAREN SEMICOLON'''
     global contQuads
@@ -596,43 +661,44 @@ def p_write_item(p):
     contQuads += 1
 
 # Condicion if y if-else # 
+
 def p_if_statement(p):
     '''if_statement : IF LPAREN expression if2 RPAREN LBRACE statement_list RBRACE condif if3'''
 
 def p_condif(p):
-    '''condif : ELSE if4 LBRACE statement_list RBRACE SEMICOLON
+    '''condif : ELSE if4 LBRACE statement_list RBRACE SEMICOLON 
               | SEMICOLON'''
-    
+
 def p_if2(p):
     '''if2 : 
     '''
-    global contQuads, pilaSaltos, temp
-    print(p[-1], 'x')
-    if varTable.getTypeFromMemory(p[-1]) != "BOOL" : 
-        raise ValueError(f"Error: Type-Mismatch")
-    else:
-        quads.append(("GOTOF", p[-1], None, None))
-        pilaSaltos.append(contQuads)
-        contQuads += 1
+    global pilaSaltos, jumps, contQuads
+    quads.append(("GOTOF", p[-1], None, None))
+    pilaSaltos.append(contQuads)
+    contQuads += 1
 
 def p_if3(p):
     '''if3 : 
     '''
-    jump = pilaSaltos.pop()
-    temp = quads[jump]
-    temp[3] = contQuads 
-    quads[jump] = temp
+    global pilaSaltos, jumps, contQuads
+    jumps = pilaSaltos.pop()
+    last_quad = list(quads[jumps])  # Convert the last tuple to a list
+    last_quad[3] = contQuads# Modify the desired element
+    quads[jumps] = tuple(last_quad)  # Convert the list back to a tuple
 
 def p_if4(p):
     '''if4 : 
     '''
+    global pilaSaltos, jumps, contQuads
     quads.append(("GOTO", None, None, None))
-    jump = pilaSaltos.pop()
+    jumps = pilaSaltos.pop()
     pilaSaltos.append(contQuads)
     contQuads += 1
-    temp = quads[jump]
-    temp[3] = contQuads 
-    quads[jump] = temp
+    last_quad = list(quads[jumps])  # Convert the last tuple to a list
+    last_quad[3] = contQuads# Modify the desired element
+    quads[jumps] = tuple(last_quad)  # Convert the list back to a tuple
+
+
 
 # Condicion While #
 def p_while_statement(p):
@@ -646,7 +712,7 @@ def p_while1(p):
 def p_while2(p):
     '''while2 : 
     '''
-    global contQuads, pilaSaltos
+    global contQuads, pilaSaltos, jumps
     if varTable.getTypeFromMemory(p[-1]) != "BOOL" : 
         raise ValueError(f"Error: Type-Mismatch")
     else:
@@ -657,13 +723,14 @@ def p_while2(p):
 def p_while3(p):
     '''while3 : 
     ''' 
+    global contQuads, pilaSaltos
     temp = pilaSaltos.pop()
     temp2 = pilaSaltos.pop()
     quads.append(("GOTO", None, None, temp2))
     contQuads += 1
-    quadtemp = quads[temp]
-    quadtemp[3] = contQuads 
-    quads[temp] = quadtemp
+    last_quad = list(quads[temp])  # Convert the last tuple to a list
+    last_quad[3] = contQuads# Modify the desired element
+    quads[temp] = tuple(last_quad)  # Convert the list back to a tuple
 
 # Condicion Do While #
 def p_do_while_statement(p):
@@ -672,6 +739,7 @@ def p_do_while_statement(p):
 def p_dowhile1(p):
     '''dowhile1 : 
     '''
+    global contQuads
     pilaSaltos.append(contQuads)
 
 def p_dowhile2(p):
@@ -681,25 +749,24 @@ def p_dowhile2(p):
     if varTable.getTypeFromMemory(p[-1]) != "BOOL" : 
         raise ValueError(f"Error: Type-Mismatch")
     else:
-        quads.append(("GOTOV", p[-1], None, pilaSaltos))
-        pilaSaltos.append(contQuads)
+        quads.append(("GOTOV", p[-1], None, pilaSaltos.pop()))
         contQuads += 1
 
-
+# Estatuto ciclo for # 
 def p_for_statement(p):
     '''for_statement : FOR LPAREN assignment_statement SEMICOLON expression SEMICOLON assignment_statement RPAREN LBRACE statement_list RBRACE'''
     
-
+# Estatuto return de funcion # 
 def p_return_statement(p):
     '''return_statement : RETURN expression SEMICOLON'''
     p[0] = ('RETURN', p[2])
 
-# Expressions
-
+# Pasa el empty # 
 def p_empty(p):
     '''empty : '''
     p[0] = None
 
+# Imprime si hay algun error # 
 def p_error(p):
     if p:
         print("Syntax error at token {}, line {}".format(p.value, p.lineno))
@@ -708,28 +775,19 @@ def p_error(p):
 
 parser = yacc.yacc()
 
-data ='''
-program prueba;
-float y, v;
-int t, b, j;
-
-func hola(){
-    int kola;
-    write("hola");
-};
-
-main(){
-    int a;
-    a = 1;
-    write(a);
-    t = 10+5*2-(2*3);
-    b = 4 + 7 * (a + 3);
-    read(a);
-    write(t, a, b);
-};
-'''
-result = parser.parse(data, debug=False)
-print("Fin de codigo",result) 
+if __name__ == '__main__':
+    if(len(sys.argv) > 1):
+            file = sys.argv[1]
+            try:
+                f = open(file, 'r')
+                data = f.read()
+                f.close()
+                if (yacc.parse(data, tracking=True) == "PROGRAM COMPILED"):
+                    print("Valid Syntaxis")
+            except EOFError:
+                print(EOFError)
+    else:
+        print("Error: File doesn't exist")
 
 
 

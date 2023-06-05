@@ -1,0 +1,48 @@
+program prueba;
+float y;
+int b, j, v, t;
+
+func hola(){
+    float kola;
+    write("hola");
+};
+
+func hi(){
+    write("xd");
+};
+
+main(){
+    int a;
+    a = 10;
+    write(a);
+    v = 6 + 82;
+    b = 4 + 7 * (a + 3);
+    read(a);
+    t = 3 + 5 * (20 - 10);
+    write(t, a);
+
+    if(a > 5){
+        a = a + 1;
+        b = 5;
+    }else{
+        b = 0;
+        a = 45;
+    };
+
+    hi();
+
+    while(a > 1){
+        a = a - 1;
+    };
+    y = 6.5;
+
+    do{
+        a = a + 1;
+    }while(a < 10);
+
+    hola();
+    
+    int x;
+    x = 1;
+    write(a);
+};

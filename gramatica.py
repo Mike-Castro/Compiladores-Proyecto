@@ -3,6 +3,7 @@ import codecs
 import re
 import ply.lex as lex
 
+# Palabras reservadas # 
 reserved = {
     'int' : 'INT',
     'float' : 'FLOAT',
@@ -20,9 +21,9 @@ reserved = {
     'write': 'WRITE',
     'program' : 'PROGRAM',
     'end' : 'END',
-    'void' : 'VOID'
 }
 
+# Tokens #
 tokens = [
     'ID',
     'CTEI',
@@ -55,11 +56,13 @@ tokens = [
     'RBRACKET'
 ]
 
+# Palabras reservadas mas tokens #
 tokens = tokens + list(reserved.values())
 
+# Definicion de tokens # 
 t_PLUS = r'\+'
 t_DIVIDE = r'/'
-t_MINUS = r'-'
+t_MINUS = r'\-'
 t_TIMES = r'\*'
 
 t_AND = r'&&'
@@ -84,37 +87,44 @@ t_RBRACKET = r'\]'
 
 t_ignore = ' \t'
 
-# Expresiones regulares
+# Expresion detecta valor flotante # 
 def t_CTEF(t):
     r'[+-]?[0-9]+\.[0-9]+'
     t.value = float(t.value)
     return t
 
+# Expresion detecta valor id # 
 def t_ID(t):
     r'[a-zA-Z_][a-zA-Z_0-9]*'
     t.type = reserved.get(t.value, 'ID')
     return t
 
+# Expresion detecta valor entero # 
 def t_CTEI(t):
     r'[-]?[0-9]+'
     t.value = int(t.value)
     return t
 
+# Expresion detecta valor string # 
 def t_CTESTRING(t):
     r'\".*\"'
     return t
 
+# Expresion detecta valor booleano # 
 def t_BOOL(t):
     r'true|false'
     t.value = t.value.lower()
     return t
 
+# Detecta una nueva linea # 
 def t_newline(t):
     r'\n+'
     t.lexer.lineno += len(t.value)
 
+# Detecta caracter no definido en la gramatica # 
 def t_error(t):
     print(f"Error: Illegal character '{t.value[0]}'")
     t.lexer.skip(1)
 
+# Creacion de lexer # 
 lexer = lex.lex()
