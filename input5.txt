@@ -1,0 +1,23 @@
+program prueba3;
+int i, n, resultado;
+
+func factorial(int x, float y){
+    resultado = 1;
+    i = 1;
+    int x;
+    x = 20;
+    while(i < n){
+        resultado = resultado * i;
+        i = i + 1;
+    };
+};
+
+main(){
+    float k;
+    write("Ingresa un valor");
+    read(n);
+    n = n + 1;
+    factorial(i, k);
+    write("El factorial es", resultado);
+    write(x);
+};

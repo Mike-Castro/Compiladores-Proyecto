@@ -1,0 +1,29 @@
+program prueba7;
+int i, n, k, p;
+
+func llenaArr(){
+    for(k=0; to n){
+        read(a[k]);
+    };
+};
+
+func find(){
+    llenaArr();
+    write("Ingresa el valor a encontrar");
+    read(p);
+    for(i=0; to n){
+        if(a[i] == p){
+            write("Valor encontrado en el indice", i);
+        };
+    };
+};
+
+main(){
+    write("Ingresa un valor del areglo");
+    read(n);
+    int a[n];
+    find();
+    for(i=1; to n){
+        write("prueba");
+    };
+};

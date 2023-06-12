@@ -1,0 +1,22 @@
+program prueba3;
+int a, temporal, n, actual, i, x, anterior;
+
+func fibo(){
+    actual = 1;
+    anterior = 0;
+    i = 2;
+    do{
+        temporal = actual;
+        actual = actual + anterior;
+        anterior = temporal;
+        i = i + 1;
+    }while(i<n);
+};
+
+main(){
+    write("Ingresa un valor");
+    read(n);
+    n = n + 1;
+    fibo();
+    write(actual);
+};

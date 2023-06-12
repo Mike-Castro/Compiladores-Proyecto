@@ -15,12 +15,23 @@ reserved = {
     'while': 'WHILE',
     'do' : 'DO',
     'for': 'FOR',
+    'to' : 'TO',
     'main': 'MAIN',
     'return': 'RETURN',
     'read': 'READ',
     'write': 'WRITE',
     'program' : 'PROGRAM',
-    'end' : 'END',
+    'forward' : 'FORWARD',
+    'backward' : 'BACKWARD',
+    'penup' : 'PENUP',
+    'pendown' : 'PENDOWN',
+    'pensize' : 'PENSIZE',
+    'left' : 'LEFT',
+    'right' : 'RIGHT',
+    'cricle' : 'CIRCLE',
+    'speed' : 'SPEED',
+    'open' : 'OPEN',
+    'end' : 'END'
 }
 
 # Tokens #

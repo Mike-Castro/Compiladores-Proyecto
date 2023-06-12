@@ -1,20 +1,19 @@
 program prueba;
-float y;
-int b, j, v, t;
+int a;
 
 func hi(){
-    write("xd");
+    write("Desde aca prueba");
 };
 
 main(){
-    int a;
-    a = 5;
-
+    a = 9;
     hi();
-
-    while(a > 1){
-        a = a - 1;
-        write(a);
+    if(a == 5){
+        write("Si es 5");
+    }else{
+        write("No es un 5");
+        if(a == 9){
+            write("Si es 9");
+        };
     };
-    write("Funciona");
 };

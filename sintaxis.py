@@ -1,7 +1,6 @@
 import os
 import codecs
 import re
-import turtle
 import sys
 import json
 import ply.yacc as yacc
@@ -108,6 +107,8 @@ class Memory():
     
     # Funcion para obtener el tipo de la variable dado una direccion # 
     def getTypeFromAddress(self, address):
+        if type(address) is tuple:
+            address = address[0]
         if (1000 <= address < 3000) or (10000 <= address < 13000) or (20000 <= address < 23000) or (33000 <= address < 35000):
             return "INT"
         elif (3000 <= address < 5000) or (13000 <= address < 15000) or (23000 <= address < 25000) or (35000 <= address < 37000):
@@ -123,11 +124,24 @@ class Memory():
 
 # Stacks para guardar los quads y sus pilas, tambien se tiene un contador #
 pilaTypes = []
+pilaAddr = []
 quads = []
 contQuads = 0
 pilaSaltos = []
 mem = Memory()
 is_global = True
+paramsCall = []
+paramsList = []
+diccListas = {}
+
+# Ejemplo de quads
+# ("GOTOF", address, None, None)
+# ("GOTOV", address, None, None)
+# ("GOTO", address, None, None)
+# ("", address, None, None)
+# ("GOSUB", None, None, #quad)
+# ("GOSUB", None, None, #quad)
+# ("+", addressOp1, addressOp2, address)
 
 # Clase de la tabla de variables #
 class VariablesTable():
@@ -300,9 +314,17 @@ def p_idFunc(p):
     else:
         print(f"Error: Function with ID: '{id}' is already declared")
 
+# Parametros para funcion #
+def p_parameter_list(p):
+    '''parameter_list : tipo ID COMMA parameter_list
+                      | tipo ID
+                      | empty'''
+    if p[1] != None:
+        paramsList.append(p[1].upper())
+
 # Llama la funcion #
 def p_callFunc(p):
-    '''callFunc : ID LPAREN parameter_list RPAREN SEMICOLON'''
+    '''callFunc : ID LPAREN paramCall RPAREN checkParam SEMICOLON'''
     global contQuads
     if p[1] not in varTable.memoryTable:
         print(f"Error: Function with ID: '{p[1]}' is not declared")
@@ -310,25 +332,34 @@ def p_callFunc(p):
         quads.append(("GOSUB", None, None, p[1]))
         contQuads += 1
 
+def p_paramCall(p):
+    '''paramCall : ID COMMA paramCall
+                 | ID 
+                 | empty'''
+    if len(p) > 1:
+        if p[1] not in varTable.memoryTable:
+            print(f"Error: Function with ID: '{p[1]}' is not declared")
+        else:
+            addrs = varTable.getVarAddress(p[1])
+            tipo = varTable.getTypeFromMemory(addrs)
+            paramsCall.append(tipo)
+
+def p_checkParam(p):
+    '''checkParam :
+    '''
+    if len(paramsList) == len(paramsCall):
+        for i in range(len(paramsCall)):
+            if paramsList[i] != paramsCall[i]:
+                raise ValueError("Error: call function doesn't match types")
+    else:
+        raise ValueError("Error: call function doesn't match length of function parameters")
+
 def p_terminaFunc(p):
     '''terminaFunc :
     '''
     global contQuads
     quads.append(("ENDFunc",None, None, None))
     contQuads += 1
-        
-# Parametros para funcion #
-def p_parameter_list(p):
-    '''parameter_list : tipo ID parameter
-                      | empty'''
-    if len(p) == 2:
-        p[0] = p[1]
-    else:
-        p[0] = p[1] + [p[3]]
-
-def p_parameter(p):
-    '''parameter : COMMA tipo ID parameter
-                 | empty'''
 
 # Lista de estatutos #
 def p_statement_list(p):
@@ -350,7 +381,8 @@ def p_statement(p):
                  | while_statement
                  | do_while_statement
                  | return_statement
-                 | callFunc'''
+                 | callFunc
+                 | graph_function'''
     p[0] = p[1]
 
 # Expresiones #
@@ -521,7 +553,7 @@ def p_term(p):
         p[0] = temp_address
 
 def p_fact(p):
-    '''fact : ID addOp
+    '''fact : dataId
             | CTEF addConst
             | CTEI addConst
             | CTESTRING addConst
@@ -530,18 +562,9 @@ def p_fact(p):
         p[0] = p[2]
     elif p[1] == '(':
         p[0] = p[2]
+    else:
+        p[0] = p[1]
 
-# Verifica si el ID existe en la tabla de variablas para poder ser asignado
-def p_addOp(p):
-    '''addOp : 
-    '''
-    id = p[-1]
-    if id not in varTable.memoryTable:
-        print("the variable doesnt exist")
-    else: 
-        a = varTable.getVarAddress(id)
-        p[0] = a
-    
 
 # Añade el tipo de la constante a la pila
 def p_addConst(p):
@@ -571,10 +594,12 @@ def p_declaration_list(p):
 
 def p_declaration(p):
     '''declaration : tipo ID SEMICOLON
-                    | tipo ID COMMA declarationD'''
-    tipo = p[1]
-    addrs = mem.addMemory(is_global, False, False, tipo, 1)
-    varTable.addVarTable(p[2], addrs)
+                    | tipo ID COMMA declarationD
+                    | list_declaration'''
+    if len(p) > 2:
+        tipo = p[1]
+        addrs = mem.addMemory(is_global, False, False, tipo, 1)
+        varTable.addVarTable(p[2], addrs)
 
 def p_declarationD(p):
     '''declarationD : ID COMMA declarationD
@@ -587,21 +612,30 @@ def p_declarationD(p):
     addrs = mem.addMemory(is_global, False, False, tipo, 1)
     varTable.addVarTable(p[1], addrs)
 
-
 # Declaracion de lista (array)  #
 def p_list_declaration(p):
     '''list_declaration : tipo ID LBRACKET var RBRACKET SEMICOLON'''
+    global contQuads, diccListas
     tipo = p[1]
     size = p[4]
     if p[2] not in varTable.memoryTable:
-        addrs = mem.addMemory(is_global, False, False, tipo, size)
+        addrs = mem.addMemory(is_global, False, False, tipo, size+1)
         varTable.addVarTable(p[2], addrs)
+        diccListas[p[2]] = size
+        quads.append(("DEC_ARR", addrs, None, size))
+        contQuads += 1
     else:
         print(f"Error: '{p[2]}' is already declared")
 
 def p_var(p):
     '''var : CTEI'''
-    p[0] = p[1]
+    if p[1] < 0:
+        raise ValueError(f"Error: Negative values not compatible '{p[1]}'")
+    else:
+        p[0] = p[1]
+        if p[1] not in varTable.memoryTable:
+            t = mem.addMemory(False, False, True, 'INT', 1)
+            varTable.addVarTable(p[1], t)
 
 # Declaracion de matriz # 
 def p_matrix_declaration(p):
@@ -616,23 +650,38 @@ def p_matrix_declaration(p):
 
 # Estatuto de asignacion #
 def p_assignment_statement(p):
-    '''assignment_statement : ID ASSIGN exp SEMICOLON
-                            | list_declaration
-                            | matrix_declaration'''
+    '''assignment_statement : dataId ASSIGN exp SEMICOLON'''
     global contQuads
-    if len(p) == 5:
-        if p[1] in varTable.memoryTable:
-            addrs = varTable.getVarAddress(p[1])
-            a = varTable.getTypeFromMemory(addrs)
-            b = varTable.getTypeFromMemory(p[3])
-            temp = mem.addMemory(is_global, False, False, a, 1)
-            if a == b:
-                quads.append(("ASSIGN", p[3], None, addrs))
-                contQuads += 1
-            else:
-                raise ValueError(f"Error: Can't assign two different types '{p[1]}' , '{p[3]}'")
-        else: 
-            raise ValueError(f"Error: ID isn't declared '{p[1]}'")
+    if type(p[1]) is tuple or type(p[3]) is tuple: 
+        quads.append(("ASSIGN", p[3], None, p[1]))
+        contQuads += 1
+    else:
+        a = varTable.getTypeFromMemory(p[1])
+        b = varTable.getTypeFromMemory(p[3])
+        if a == b:
+            quads.append(("ASSIGN", p[3], None, p[1]))
+            contQuads += 1
+            p[0] = p[1]
+        else:
+            raise ValueError(f"Error: Can't assign two different types '{p[1]}' , '{p[3]}'")
+
+def p_dataId(p):
+    '''dataId : ID
+              | ID LBRACKET exp RBRACKET'''
+    global contQuads, diccListas
+    if p[1] in varTable.memoryTable:
+        addrs = varTable.getVarAddress(p[1])
+        print(addrs)
+        if len(p) == 2:
+            p[0] = addrs
+        else:
+            temp = diccListas[p[1]]
+            lim2 = varTable.getVarAddress(temp)
+            quads.append(("VER", p[3], 0, lim2))
+            contQuads += 1   
+            p[0] = (addrs, p[3], lim2)
+    else:
+        raise ValueError(f"Error: ID isn't declared '{p[1]}'")
 
 
 # Estatuto leer datos # 
@@ -682,9 +731,9 @@ def p_if3(p):
     '''
     global pilaSaltos, jumps, contQuads
     jumps = pilaSaltos.pop()
-    last_quad = list(quads[jumps])  # Convert the last tuple to a list
-    last_quad[3] = contQuads# Modify the desired element
-    quads[jumps] = tuple(last_quad)  # Convert the list back to a tuple
+    last_quad = list(quads[jumps])  
+    last_quad[3] = contQuads 
+    quads[jumps] = tuple(last_quad)  
 
 def p_if4(p):
     '''if4 : 
@@ -694,9 +743,9 @@ def p_if4(p):
     jumps = pilaSaltos.pop()
     pilaSaltos.append(contQuads)
     contQuads += 1
-    last_quad = list(quads[jumps])  # Convert the last tuple to a list
-    last_quad[3] = contQuads# Modify the desired element
-    quads[jumps] = tuple(last_quad)  # Convert the list back to a tuple
+    last_quad = list(quads[jumps]) 
+    last_quad[3] = contQuads
+    quads[jumps] = tuple(last_quad)  
 
 
 
@@ -728,9 +777,9 @@ def p_while3(p):
     temp2 = pilaSaltos.pop()
     quads.append(("GOTO", None, None, temp2))
     contQuads += 1
-    last_quad = list(quads[temp])  # Convert the last tuple to a list
-    last_quad[3] = contQuads# Modify the desired element
-    quads[temp] = tuple(last_quad)  # Convert the list back to a tuple
+    last_quad = list(quads[temp])  
+    last_quad[3] = contQuads
+    quads[temp] = tuple(last_quad)  
 
 # Condicion Do While #
 def p_do_while_statement(p):
@@ -754,12 +803,66 @@ def p_dowhile2(p):
 
 # Estatuto ciclo for # 
 def p_for_statement(p):
-    '''for_statement : FOR LPAREN assignment_statement SEMICOLON expression SEMICOLON assignment_statement RPAREN LBRACE statement_list RBRACE'''
+    '''for_statement : FOR LPAREN assignment_statement for2 TO exp for3 RPAREN LBRACE statement_list RBRACE for4 SEMICOLON'''
+    
+def p_for2(p):
+    '''for2 : 
+    '''
+    global pilaAddr
+    pilaAddr.append(p[-1])
+
+def p_for3(p):
+    '''for3 : 
+    ''' 
+    global contQuads, pilaSaltos, jumps, pilaAddr
+    t = pilaAddr[-1]
+    temp_address = mem.addMemory(False, True, False, 'BOOL', 1)
+    quads.append(("LTE", t, p[-1], temp_address))
+    pilaSaltos.append(contQuads)
+    quads.append(("GOTOF", temp_address, None, None))
+    pilaSaltos.append(contQuads)
+    contQuads += 2
+
+def p_for4(p):
+    '''for4 : 
+    ''' 
+    global contQuads, pilaSaltos, pilaAddr
+    temp = pilaSaltos.pop()
+    temp2 = pilaSaltos.pop()
+    temp_address = mem.addMemory(False, True, False, 'INT', 1)
+    quads.append(("PLUS", pilaAddr[-1], 1, temp_address))
+    quads.append(("ASSIGN", temp_address, None, pilaAddr[-1]))
+    quads.append(("GOTO", None, None, temp2))
+    contQuads += 3
+    last_quad = list(quads[temp+1])  
+    last_quad[3] = contQuads
+    quads[temp+1] = tuple(last_quad) 
     
 # Estatuto return de funcion # 
 def p_return_statement(p):
     '''return_statement : RETURN expression SEMICOLON'''
     p[0] = ('RETURN', p[2])
+
+def p_graph_function(p):
+    '''graph_function : OPEN LPAREN RPAREN SEMICOLON
+                      | END LPAREN RPAREN SEMICOLON
+                      | PENDOWN LPAREN RPAREN SEMICOLON
+                      | PENUP LPAREN RPAREN SEMICOLON'''
+    global contQuads
+    quads.append(("TURTLE", None, None, p[1]))
+    contQuads += 1
+
+def p_graph_function2(p):
+    '''graph_function : FORWARD LPAREN exp RPAREN SEMICOLON
+                      | BACKWARD LPAREN exp RPAREN SEMICOLON
+                      | LEFT LPAREN exp RPAREN SEMICOLON
+                      | RIGHT LPAREN exp RPAREN SEMICOLON
+                      | SPEED LPAREN exp RPAREN SEMICOLON
+                      | PENSIZE LPAREN exp RPAREN SEMICOLON
+                      | CIRCLE LPAREN exp RPAREN SEMICOLON'''
+    global contQuads
+    quads.append(("TURTLE", p[3], None, p[1]))
+    contQuads += 1
 
 # Pasa el empty # 
 def p_empty(p):

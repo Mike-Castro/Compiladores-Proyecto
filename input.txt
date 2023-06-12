@@ -1,48 +1,36 @@
 program prueba;
-float y;
-int b, j, v, t;
+float y, d;
+int b, t, c;
 
 func hola(){
-    float kola;
-    write("hola");
+    int cont;
+    cont = 14 + 6;
+    write("El valor de cont es", cont);
 };
 
 func hi(){
-    write("xd");
+    t = 3 + 5 * (20 - 10);
 };
 
 main(){
     int a;
     a = 10;
-    write(a);
-    v = 6 + 82;
     b = 4 + 7 * (a + 3);
+    t = 5;
+    write("Ingresa valor de a");
     read(a);
-    t = 3 + 5 * (20 - 10);
-    write(t, a);
-
+    write("El valor de t", t);
+    write("El valor de a", a);
     if(a > 5){
         a = a + 1;
         b = 5;
     }else{
         b = 0;
-        a = 45;
+        a = 15;
     };
-
     hi();
-
-    while(a > 1){
-        a = a - 1;
-    };
-    y = 6.5;
-
-    do{
-        a = a + 1;
-    }while(a < 10);
-
+    y = 5.5 * 5.5;
     hola();
-    
-    int x;
-    x = 1;
-    write(a);
+    write("El valor de y", y);
+    write("El valor de t", t);
 };

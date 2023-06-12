@@ -1,5 +1,7 @@
 import json
+import turtle
 import time
+
 
 class VirtualMachine:
     def __init__(self):
@@ -11,9 +13,34 @@ class VirtualMachine:
         self.quad_pointer = 0
         self.varAddress = {}
         self.localMemory = {}
-        self.stackCall = [] 
+        self.stackCall = []
 
-    # Funcion para regresar el tipo de valor #
+    def turtleGraphics(self, nameF, value):
+        if nameF == "OPEN":
+            global t
+            t = turtle.Turtle()
+        elif nameF == "END":
+            turtle.done()
+        elif nameF == "PENUP":
+            t.penup()
+        elif nameF == "PENDOWN":
+            t.pendown()
+        elif nameF == "FORWARD":
+            t.forward(value)
+        elif nameF == "BACKWARD":
+            t.backward(value)
+        elif nameF == "LEFT":
+            t.left(value)
+        elif nameF == "RIGHT":
+            t.right(value)
+        elif nameF == "SPEED":
+            t.speed(value)
+        elif nameF == "PENSIZE":
+            t.pensize(value)
+        elif nameF == "CIRCLE":
+            t.circle(value)
+
+    # Funcion busca el valor para regresar el tipo#
     def getKey(self, dictionary, valor):
         if valor in self.localMemory:
             tipo = self.localMemory.get(valor)
@@ -55,7 +82,6 @@ class VirtualMachine:
     def run(self, quads, memory):
         self.quads = quads
         self.memory = memory
-        print(self.memory)
         for key, value in memory.items():
             if key == "MAIN":
                 self.quad_pointer = int(value)
@@ -66,77 +92,381 @@ class VirtualMachine:
             op2 = self.quads[self.quad_pointer][2]
             op3 = self.quads[self.quad_pointer][3]
             if opcode == "PLUS":
-                a = vm.getKey(self.memory, op1)
-                b = vm.getKey(self.memory, op2)
-                result = a + b
-                self.localMemory[op3] = result
-                self.quad_pointer += 1
+                if(op2) < 2:
+                    a = vm.getKey(self.memory, op1)
+                    result = a + op2
+                    self.localMemory[op3] = result
+                    self.quad_pointer += 1
+                else:
+                    if type(op2) is list:
+                        if type(op1) is list:
+                            a = self.getKey(self.memory, op1[1])
+                            sum = a + op1[0]
+                            resul = self.getKey(self.memory, sum)
+                            b = self.getKey(self.memory, op2[1])
+                            sum2 = b + op2[0]
+                            resul2 = self.getKey(self.memory, sum2)
+                            final = resul + resul2
+                            self.localMemory[op3] = final
+                        else:
+                            a = self.getKey(self.memory, op2[1])
+                            sum = a + op2[0]
+                            resul = self.getKey(self.memory, sum)
+                            b = self.getKey(self.memory, op1)
+                            final = b + resul
+                            self.localMemory[op3] = final
+                        self.quad_pointer += 1
+                    else:
+                        if type(op1) is list:
+                            a = self.getKey(self.memory, op1[1])
+                            sum = a + op1[0]
+                            resul = self.getKey(self.memory, sum)
+                            b = vm.getKey(self.memory, op2)
+                            final = resul + b
+                            self.localMemory[op3] = final
+                        else:
+                            a = vm.getKey(self.memory, op1)
+                            b = vm.getKey(self.memory, op2)
+                            result = a + b
+                            self.localMemory[op3] = result
+                        self.quad_pointer += 1
             elif opcode == "TIMES":
-                a = vm.getKey(self.memory, op1)
-                b = vm.getKey(self.memory, op2)
-                result = a * b
-                self.localMemory[op3] = result
-                self.quad_pointer += 1
+                if type(op2) is list:
+                    if type(op1) is list:
+                        a = self.getKey(self.memory, op1[1])
+                        sum = a + op1[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = self.getKey(self.memory, op2[1])
+                        sum2 = b + op2[0]
+                        resul2 = self.getKey(self.memory, sum2)
+                        final = resul * resul2
+                        self.localMemory[op3] = final
+                    else:
+                        a = self.getKey(self.memory, op2[1])
+                        sum = a + op2[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = self.getKey(self.memory, op1)
+                        final = b * resul
+                        self.localMemory[op3] = final
+                    self.quad_pointer += 1
+                else:
+                    if type(op1) is list:
+                        a = self.getKey(self.memory, op1[1])
+                        sum = a + op1[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = vm.getKey(self.memory, op2)
+                        final = resul * b
+                        self.localMemory[op3] = final
+                    else:
+                        a = vm.getKey(self.memory, op1)
+                        b = vm.getKey(self.memory, op2)
+                        result = a * b
+                        self.localMemory[op3] = result
+                    self.quad_pointer += 1
             elif opcode == "MINUS":
-                a = vm.getKey(self.memory, op1)
-                b = vm.getKey(self.memory, op2)
-                result = a - b
-                self.localMemory[op3] = result
-                self.quad_pointer += 1
+                if type(op2) is list:
+                    if type(op1) is list:
+                        a = self.getKey(self.memory, op1[1])
+                        sum = a + op1[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = self.getKey(self.memory, op2[1])
+                        sum2 = b + op2[0]
+                        resul2 = self.getKey(self.memory, sum2)
+                        final = resul - resul2
+                        self.localMemory[op3] = final
+                    else:
+                        a = self.getKey(self.memory, op2[1])
+                        sum = a + op2[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = self.getKey(self.memory, op1)
+                        final = b - resul
+                        self.localMemory[op3] = final
+                    self.quad_pointer += 1
+                else:
+                    if type(op1) is list:
+                        a = self.getKey(self.memory, op1[1])
+                        sum = a + op1[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = vm.getKey(self.memory, op2)
+                        final = resul - b
+                        self.localMemory[op3] = final
+                    else:
+                        a = vm.getKey(self.memory, op1)
+                        b = vm.getKey(self.memory, op2)
+                        result = a - b
+                        self.localMemory[op3] = result
+                    self.quad_pointer += 1
             elif opcode == "DIVIDE":
-                a = vm.getKey(self.memory, op1)
-                b = vm.getKey(self.memory, op2)
-                result = a / b
-                self.quad_pointer += 1
-                self.localMemory[op3] = result
+                if type(op2) is list:
+                    if type(op1) is list:
+                        a = self.getKey(self.memory, op1[1])
+                        sum = a + op1[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = self.getKey(self.memory, op2[1])
+                        sum2 = b + op2[0]
+                        resul2 = self.getKey(self.memory, sum2)
+                        final = resul / resul2
+                        self.localMemory[op3] = final
+                    else:
+                        a = self.getKey(self.memory, op2[1])
+                        sum = a + op2[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = self.getKey(self.memory, op1)
+                        final = b / resul
+                        self.localMemory[op3] = final
+                    self.quad_pointer += 1
+                else:
+                    if type(op1) is list:
+                        a = self.getKey(self.memory, op1[1])
+                        sum = a + op1[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = vm.getKey(self.memory, op2)
+                        final = resul / b
+                        self.localMemory[op3] = final
+                    else:
+                        a = vm.getKey(self.memory, op1)
+                        b = vm.getKey(self.memory, op2)
+                        result = a / b
+                        self.localMemory[op3] = result
+                    self.quad_pointer += 1
             elif opcode == "WRITE":
-                value = self.getKey(self.memory, op3)
-                print(value)
-                self.quad_pointer += 1
+                if type(op3) is list:
+                    a = self.getKey(self.memory, op3[1])
+                    resultadd = a + op3[0]
+                    value = self.localMemory[resultadd]
+                    print(value)
+                    self.quad_pointer += 1
+                else:
+                    value = self.getKey(self.memory, op3)
+                    print(value)
+                    self.quad_pointer += 1
             elif opcode == "READ":
-                inp = input(f"Enter value: ")
+                inp = input()
                 self.localMemory[op3] = inp
                 self.quad_pointer += 1
             elif opcode == "ASSIGN":
-                value = self.getKey(self.memory, op1)
-                self.localMemory[op3] = value
-                self.quad_pointer += 1
+                if type(op3) is list:
+                    if type(op1) is list:
+                        a = self.getKey(self.memory, op1[1])
+                        sum = a + op1[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = self.getKey(self.memory, op3[1])
+                        resul2 = b + op3[0]
+                        self.localMemory[resul2] = resul
+                    else:
+                        value = self.getKey(self.memory, op1)
+                        a = self.getKey(self.memory, op3[1])
+                        resultadd = a + op3[0]
+                        self.localMemory[resultadd] = value
+                    self.quad_pointer += 1
+                else:
+                    if type(op1) is list:
+                        a = self.getKey(self.memory, op1[1])
+                        sum = a + op1[0]
+                        resul = self.getKey(self.memory, sum)
+                        self.localMemory[op3] = resul
+                    else:
+                        value = self.getKey(self.memory, op1)
+                        self.localMemory[op3] = value
+                    self.quad_pointer += 1
             elif opcode == "LT":
-                a = vm.getKey(self.memory, op1)
-                b = vm.getKey(self.memory, op2)
-                result = a < b
-                self.localMemory[op3] = result
-                self.quad_pointer += 1
+                if type(op2) is list:
+                    if type(op1) is list:
+                        a = self.getKey(self.memory, op1[1])
+                        sum = a + op1[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = self.getKey(self.memory, op2[1])
+                        sum2 = b + op2[0]
+                        resul2 = self.getKey(self.memory, sum2)
+                        final = resul < resul2
+                        self.localMemory[op3] = final
+                    else:
+                        a = self.getKey(self.memory, op2[1])
+                        sum = a + op2[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = self.getKey(self.memory, op1)
+                        final = b < resul
+                        self.localMemory[op3] = final
+                    self.quad_pointer += 1
+                else:
+                    if type(op1) is list:
+                        a = self.getKey(self.memory, op1[1])
+                        sum = a + op1[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = vm.getKey(self.memory, op2)
+                        final = resul < b
+                        self.localMemory[op3] = final
+                    else:
+                        a = vm.getKey(self.memory, op1)
+                        b = vm.getKey(self.memory, op2)
+                        result = a < b
+                        self.localMemory[op3] = result
+                    self.quad_pointer += 1
             elif opcode == "GT":
-                a = vm.getKey(self.memory, op1)
-                b = vm.getKey(self.memory, op2)
-                result = a > b
-                self.localMemory[op3] = result
-                self.quad_pointer += 1
+                if type(op2) is list:
+                    if type(op1) is list:
+                        a = self.getKey(self.memory, op1[1])
+                        sum = a + op1[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = self.getKey(self.memory, op2[1])
+                        sum2 = b + op2[0]
+                        resul2 = self.getKey(self.memory, sum2)
+                        final = resul > resul2
+                        self.localMemory[op3] = final
+                    else:
+                        a = self.getKey(self.memory, op2[1])
+                        sum = a + op2[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = self.getKey(self.memory, op1)
+                        final = b > resul
+                        self.localMemory[op3] = final
+                    self.quad_pointer += 1
+                else:
+                    if type(op1) is list:
+                        a = self.getKey(self.memory, op1[1])
+                        sum = a + op1[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = vm.getKey(self.memory, op2)
+                        final = resul > b
+                        self.localMemory[op3] = final
+                    else:
+                        a = vm.getKey(self.memory, op1)
+                        b = vm.getKey(self.memory, op2)
+                        result = a > b
+                        self.localMemory[op3] = result
+                    self.quad_pointer += 1
             elif opcode == "GTE":
-                a = vm.getKey(self.memory, op1)
-                b = vm.getKey(self.memory, op2)
-                result = a >= b
-                self.localMemory[op3] = result
-                self.quad_pointer += 1
+                if type(op2) is list:
+                    if type(op1) is list:
+                        a = self.getKey(self.memory, op1[1])
+                        sum = a + op1[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = self.getKey(self.memory, op2[1])
+                        sum2 = b + op2[0]
+                        resul2 = self.getKey(self.memory, sum2)
+                        final = resul >= resul2
+                        self.localMemory[op3] = final
+                    else:
+                        a = self.getKey(self.memory, op2[1])
+                        sum = a + op2[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = self.getKey(self.memory, op1)
+                        final = b >= resul
+                        self.localMemory[op3] = final
+                    self.quad_pointer += 1
+                else:
+                    if type(op1) is list:
+                        a = self.getKey(self.memory, op1[1])
+                        sum = a + op1[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = vm.getKey(self.memory, op2)
+                        final = resul >= b
+                        self.localMemory[op3] = final
+                    else:
+                        a = vm.getKey(self.memory, op1)
+                        b = vm.getKey(self.memory, op2)
+                        result = a >= b
+                        self.localMemory[op3] = result
+                    self.quad_pointer += 1
             elif opcode == "LTE":
-                a = vm.getKey(self.memory, op1)
-                b = vm.getKey(self.memory, op2)
-                result = a <= b
-                self.localMemory[op3] = result
-                self.quad_pointer += 1
+                if type(op2) is list:
+                    if type(op1) is list:
+                        a = self.getKey(self.memory, op1[1])
+                        sum = a + op1[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = self.getKey(self.memory, op2[1])
+                        sum2 = b + op2[0]
+                        resul2 = self.getKey(self.memory, sum2)
+                        final = resul <= resul2
+                        self.localMemory[op3] = final
+                    else:
+                        a = self.getKey(self.memory, op2[1])
+                        sum = a + op2[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = self.getKey(self.memory, op1)
+                        final = b <= resul
+                        self.localMemory[op3] = final
+                    self.quad_pointer += 1
+                else:
+                    if type(op1) is list:
+                        a = self.getKey(self.memory, op1[1])
+                        sum = a + op1[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = vm.getKey(self.memory, op2)
+                        final = resul <= b
+                        self.localMemory[op3] = final
+                    else:
+                        a = vm.getKey(self.memory, op1)
+                        b = vm.getKey(self.memory, op2)
+                        result = a <= b
+                        self.localMemory[op3] = result
+                    self.quad_pointer += 1
             elif opcode == "EQ":
-                a = vm.getKey(self.memory, op1)
-                b = vm.getKey(self.memory, op2)
-                result = a == b
-                self.localMemory[op3] = result
-                self.quad_pointer += 1
+                if type(op2) is list:
+                    if type(op1) is list:
+                        a = self.getKey(self.memory, op1[1])
+                        sum = a + op1[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = self.getKey(self.memory, op2[1])
+                        sum2 = b + op2[0]
+                        resul2 = self.getKey(self.memory, sum2)
+                        final = resul == resul2
+                        self.localMemory[op3] = final
+                    else:
+                        a = self.getKey(self.memory, op2[1])
+                        sum = a + op2[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = self.getKey(self.memory, op1)
+                        final = b == resul
+                        self.localMemory[op3] = final
+                    self.quad_pointer += 1
+                else:
+                    if type(op1) is list:
+                        a = self.getKey(self.memory, op1[1])
+                        sum = a + op1[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = vm.getKey(self.memory, op2)
+                        final = resul == b
+                        self.localMemory[op3] = final
+                    else:
+                        a = vm.getKey(self.memory, op1)
+                        b = vm.getKey(self.memory, op2)
+                        result = a == b
+                        self.localMemory[op3] = result
+                    self.quad_pointer += 1
             elif opcode == "NEQ":
-                a = vm.getKey(self.memory, op1)
-                b = vm.getKey(self.memory, op2)
-                result = a != b
-                self.localMemory[op3] = result
-                self.quad_pointer += 1
+                if type(op2) is list:
+                    if type(op1) is list:
+                        a = self.getKey(self.memory, op1[1])
+                        sum = a + op1[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = self.getKey(self.memory, op2[1])
+                        sum2 = b + op2[0]
+                        resul2 = self.getKey(self.memory, sum2)
+                        final = resul != resul2
+                        self.localMemory[op3] = final
+                    else:
+                        a = self.getKey(self.memory, op2[1])
+                        sum = a + op2[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = self.getKey(self.memory, op1)
+                        final = b != resul
+                        self.localMemory[op3] = final
+                    self.quad_pointer += 1
+                else:
+                    if type(op1) is list:
+                        a = self.getKey(self.memory, op1[1])
+                        sum = a + op1[0]
+                        resul = self.getKey(self.memory, sum)
+                        b = vm.getKey(self.memory, op2)
+                        final = resul != b
+                        self.localMemory[op3] = final
+                    else:
+                        a = vm.getKey(self.memory, op1)
+                        b = vm.getKey(self.memory, op2)
+                        result = a != b
+                        self.localMemory[op3] = result
+                    self.quad_pointer += 1
             elif opcode == "GOTO":
                 point = int(op3)
                 self.quad_pointer = point 
@@ -160,22 +490,37 @@ class VirtualMachine:
                     if key == op3:
                         go = int(value)
                 self.quad_pointer = go
+            elif opcode == "TURTLE":
+                if op1 != None:
+                    a = vm.getKey(self.memory, op1)
+                    vm.turtleGraphics(op3.upper(), a)
+                else:
+                    vm.turtleGraphics(op3.upper(), None)
+                
+                self.quad_pointer += 1
+            elif opcode == "DEC_ARR":
+                for x in range(op3):
+                    self.localMemory[op1+x+1] = 0
+                self.quad_pointer += 1
+            elif opcode == "VER":
+                a = vm.getKey(self.memory, op1)
+                b = vm.getKey(self.memory, op3)
+                if a < op2 or a >= b:
+                    raise ValueError("Error: index out of range")
+                self.quad_pointer += 1
             elif opcode == "END":
-                print("Final del programa")
+                print("\n------------------") 
+                print("Fin del Programa")
                 break
             elif opcode == "ENDFunc":
                 self.quad_pointer = temp
             else:
                 break
 
-    def find_label(self, label):
-        for i, quad in enumerate(self.quads):
-            if quad[0] == "LABEL" and quad[1] == label:
-                return i
-        raise Exception(f"Label '{label}' not found")
-
-
 vm = VirtualMachine()
 obj_file = 'info.json'
+print("------------------") 
+print("   Ejecución")
+print("------------------\n")
 quads, memory = vm.loadOBJ(obj_file)
 vm.run(quads, memory)
