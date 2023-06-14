@@ -1,0 +1,16 @@
+program prueba;
+int z;
+float a;
+float b;
+
+func suma(float x, float y){
+    float res;
+    res = x+y;
+    write("El valor de la suma es", res);
+};
+
+main(){
+    a = 10.5;
+    b = 12.5*2.0;
+    suma(a, b);
+};

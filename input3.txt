@@ -4,7 +4,7 @@ int a, temporal, n, actual, i, x, anterior;
 func fibo(){
     actual = 1;
     anterior = 0;
-    i = 2;
+    i = 0;
     do{
         temporal = actual;
         actual = actual + anterior;

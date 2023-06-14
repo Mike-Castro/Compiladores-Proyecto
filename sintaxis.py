@@ -122,6 +122,21 @@ class Memory():
         else:
             return "Unknown type"
 
+    # Funcion que resetea las direcciones de locales y temporales de la memoria #
+    def clear_locals(self):
+        self.memory_spaces['LocalesInt'] = (1000, 3000)
+        self.memory_spaces['LocalesFloat'] = (3000, 5000)
+        self.memory_spaces['LocalesString'] = (5000, 7000)
+        self.memory_spaces['LocalesPointer'] = (50000, 52000)
+        self.memory_spaces['LocalesBool'] = (7000, 9000)
+
+        self.memory_spaces['TemporalesInt'] = (20000, 23000)
+        self.memory_spaces['TemporalesFloat'] = (23000, 25000)
+        self.memory_spaces['TemporalesString'] = (25000, 27000)
+        self.memory_spaces['TemporalesBool'] = (27000, 29000)
+        self.memory_spaces['TemporalesPointers'] =  (30000, 33000)
+
+
 # Stacks para guardar los quads y sus pilas, tambien se tiene un contador #
 pilaTypes = []
 pilaAddr = []
@@ -131,6 +146,7 @@ pilaSaltos = []
 mem = Memory()
 is_global = True
 paramsCall = []
+paramsListId = {}
 paramsList = []
 diccListas = {}
 
@@ -268,6 +284,7 @@ def p_dataObj(p):
     data = {
         'quad' : quads,
         'memory' : varTable.memoryTable,
+        'paramsListId' : paramsListId
     }
     with open("info.json", "w") as outfile:
         json.dump(data, outfile, indent=4)
@@ -299,6 +316,11 @@ def p_function(p):
 
 def p_functionF(p):
     '''functionF : FUNC idFunc LPAREN parameter_list RPAREN LBRACE statement_list RBRACE SEMICOLON terminaFunc'''
+    global paramsList
+    global paramsListId
+    paramsListId[p[2]] = paramsList
+    paramsList = []
+    mem.clear_locals()
 
 # Guarda el ID de la funcion y verifica # 
 def p_idFunc(p):
@@ -308,6 +330,7 @@ def p_idFunc(p):
     global is_global, contQuads
     is_global = False
     id = p[1]
+    p[0] = id
     if id not in varTable.memoryTable:
         addrs = mem.addMemory(is_global, False, False, 'POINTER', 1)
         varTable.addVarTable(id, contQuads)
@@ -320,29 +343,38 @@ def p_parameter_list(p):
                       | tipo ID
                       | empty'''
     if p[1] != None:
-        paramsList.append(p[1].upper())
+        new_dir = mem.addMemory(False, False, False, p[1].upper(), 1)
+        varTable.addVarTable(p[2], new_dir)
+        paramsList.append((p[1].upper(), new_dir))
 
 # Llama la funcion #
 def p_callFunc(p):
-    '''callFunc : ID LPAREN paramCall RPAREN checkParam SEMICOLON'''
+    '''callFunc : ID LPAREN paramCall RPAREN  SEMICOLON'''
     global contQuads
+    global paramsCall
     if p[1] not in varTable.memoryTable:
         print(f"Error: Function with ID: '{p[1]}' is not declared")
     else:
+        if len(paramsListId[p[1]]) == len(paramsCall):
+            for i in range(len(paramsCall)):
+                if paramsListId[p[1]][i][0] != paramsCall[i]:
+                    raise ValueError("Error: call function doesn't match types")
+        else:
+            raise ValueError("Error: call function doesn't match length of function parameters")
         quads.append(("GOSUB", None, None, p[1]))
         contQuads += 1
+    paramsCall = []
 
 def p_paramCall(p):
-    '''paramCall : ID COMMA paramCall
-                 | ID 
+    '''paramCall : exp COMMA paramCall
+                 | exp 
                  | empty'''
-    if len(p) > 1:
-        if p[1] not in varTable.memoryTable:
-            print(f"Error: Function with ID: '{p[1]}' is not declared")
-        else:
-            addrs = varTable.getVarAddress(p[1])
-            tipo = varTable.getTypeFromMemory(addrs)
-            paramsCall.append(tipo)
+    if p[1] != None :
+        addrs = p[1]
+        tipo = varTable.getTypeFromMemory(addrs)
+        #  varTable.addVarTable(p[1])
+        quads.append(("PARAM", addrs,0,0))
+        paramsCall.append(tipo)
 
 def p_checkParam(p):
     '''checkParam :
@@ -415,6 +447,7 @@ def p_expression(p):
         contQuads += 1
         p[0] = temp_address
 
+# Expresiones lógicas #
 def p_exp1(p):
     '''exp1 : exp
             | exp LT exp
@@ -490,7 +523,7 @@ def p_exp1(p):
         contQuads += 1
         p[0] = temp_address
 
-
+# Expresiones aritmeticas #
 def p_exp(p):
     '''exp : term 
              | term PLUS exp
@@ -523,6 +556,7 @@ def p_exp(p):
         contQuads += 1
         p[0] = temp_address
 
+# Expresiones aritmeticas #
 def p_term(p):
     '''term : fact
          | fact TIMES term
@@ -552,6 +586,7 @@ def p_term(p):
         contQuads += 1
         p[0] = temp_address
 
+# Se verifica si es variable o un id #
 def p_fact(p):
     '''fact : dataId
             | CTEF addConst
@@ -627,6 +662,7 @@ def p_list_declaration(p):
     else:
         print(f"Error: '{p[2]}' is already declared")
 
+# Para declarar en la lista debe de ser entero #
 def p_var(p):
     '''var : CTEI'''
     if p[1] < 0:
@@ -665,13 +701,13 @@ def p_assignment_statement(p):
         else:
             raise ValueError(f"Error: Can't assign two different types '{p[1]}' , '{p[3]}'")
 
+# Se verifica si es solo un ID o si es una lista #
 def p_dataId(p):
     '''dataId : ID
               | ID LBRACKET exp RBRACKET'''
     global contQuads, diccListas
     if p[1] in varTable.memoryTable:
         addrs = varTable.getVarAddress(p[1])
-        print(addrs)
         if len(p) == 2:
             p[0] = addrs
         else:
@@ -753,11 +789,13 @@ def p_if4(p):
 def p_while_statement(p):
     '''while_statement : WHILE LPAREN while1 expression while2 RPAREN LBRACE statement_list RBRACE while3 SEMICOLON'''
 
+# Se guarda el contador de quads a la pila de saltos #
 def p_while1(p):
     '''while1 : 
     '''
     pilaSaltos.append(contQuads)
 
+# Se genera el GOTOF y se guarda otra vez el contador de quads#
 def p_while2(p):
     '''while2 : 
     '''
@@ -769,6 +807,7 @@ def p_while2(p):
         pilaSaltos.append(contQuads)
         contQuads += 1
 
+# Se genera el quad GOTO y se modifica el GOTOF #
 def p_while3(p):
     '''while3 : 
     ''' 
@@ -785,12 +824,14 @@ def p_while3(p):
 def p_do_while_statement(p):
     '''do_while_statement : DO dowhile1 LBRACE statement_list RBRACE WHILE LPAREN expression dowhile2 RPAREN SEMICOLON'''
 
+# Se guarda el contador de quads a la pila de saltos #
 def p_dowhile1(p):
     '''dowhile1 : 
     '''
     global contQuads
     pilaSaltos.append(contQuads)
 
+# Se genera el quad de GOTOV, se utiliza la pila de saltos#
 def p_dowhile2(p):
     '''dowhile2 : 
     '''
@@ -805,12 +846,14 @@ def p_dowhile2(p):
 def p_for_statement(p):
     '''for_statement : FOR LPAREN assignment_statement for2 TO exp for3 RPAREN LBRACE statement_list RBRACE for4 SEMICOLON'''
     
+# Se guarda la direccion de la asignacion en la pila #
 def p_for2(p):
     '''for2 : 
     '''
     global pilaAddr
     pilaAddr.append(p[-1])
 
+# Se genera el quad the Less than equal y el GOTOF #
 def p_for3(p):
     '''for3 : 
     ''' 
@@ -823,6 +866,8 @@ def p_for3(p):
     pilaSaltos.append(contQuads)
     contQuads += 2
 
+# Se genera el quad para sumar de 1 en 1 la asignacion, se genera el quad de asignacion, se genera el quad de GOTO
+# y finalmente se modifica el valor del quad de GOTOF #
 def p_for4(p):
     '''for4 : 
     ''' 
@@ -843,6 +888,7 @@ def p_return_statement(p):
     '''return_statement : RETURN expression SEMICOLON'''
     p[0] = ('RETURN', p[2])
 
+# Regla para manejar la sintaxis de funciones de la grafica #
 def p_graph_function(p):
     '''graph_function : OPEN LPAREN RPAREN SEMICOLON
                       | END LPAREN RPAREN SEMICOLON
@@ -852,6 +898,7 @@ def p_graph_function(p):
     quads.append(("TURTLE", None, None, p[1]))
     contQuads += 1
 
+# Regla para manejar la sintaxis de funciones de la grafica #
 def p_graph_function2(p):
     '''graph_function : FORWARD LPAREN exp RPAREN SEMICOLON
                       | BACKWARD LPAREN exp RPAREN SEMICOLON
@@ -891,6 +938,3 @@ if __name__ == '__main__':
                 print(EOFError)
     else:
         print("Error: File doesn't exist")
-
-
-
